@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Furni. - Bespoke Furniture & Design</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Three.js for 3D Viewer -->
+    <script async src="https://unpkg.com/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <style>
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFDFD;
+        }
+        h1, h2, h3, h4, .font-serif {
+            font-family: 'Playfair Display', serif;
+        }
+        .nav-link {
+            @apply relative text-gray-700 hover:text-[#C19A6B] transition-colors duration-300 py-2;
+        }
+        .nav-link::after, .filter-btn.active::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #C19A6B;
+            transition: width 0.3s ease-in-out;
+        }
+        .nav-link:hover::after, .filter-btn.active::after { width: 100%; }
+        .btn {
+            @apply px-8 py-3 rounded-full font-semibold text-white transition-all duration-300 ease-in-out transform;
+        }
+        .btn-primary {
+            @apply bg-[#3A3A3A] hover:bg-[#C19A6B] hover:shadow-lg hover:-translate-y-1;
+        }
+        .btn-hero {
+            @apply bg-[#C19A6B] hover:bg-[#3A3A3A] hover:shadow-lg hover:-translate-y-1;
+        }
+        .page { display: none; }
+        .page.active {
+            display: block;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .product-card {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out, box-shadow 0.3s;
+        }
+        .product-card.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        #product-3d-view {
+            width: 100%;
+            height: 400px;
+            cursor: grab;
+            background: #f0f0f0;
+            border-radius: 0.5rem;
+        }
+        /* Dropdown Menu Styles */
+        .dropdown { @apply relative; }
+        .dropdown-menu {
+            @apply absolute left-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50;
+            transform: translateY(10px);
+        }
+        .group-hover\:block .dropdown-menu {
+             transform: translateY(0);
+        }
+        .dropdown-item {
+            @apply block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-[#C19A6B];
+        }
+        .color-swatch { @apply w-8 h-8 rounded-full cursor-pointer border-2 border-transparent transition-all; }
+        .color-swatch.active { @apply border-gray-800 scale-110; }
+        .modal-overlay { @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-opacity duration-300; }
+        .modal-content { @apply bg-white rounded-lg shadow-xl p-8 max-w-sm w-full text-center transform transition-all duration-300 scale-95; }
+        .accordion-item { @apply border-b border-gray-200; }
+        .accordion-header { @apply flex justify-between items-center p-4 cursor-pointer hover:bg-gray-50; }
+        .accordion-content { @apply p-4 bg-gray-50 max-h-0 overflow-hidden transition-all duration-500 ease-in-out; }
+        .accordion-content.open { @apply max-h-screen; }
+        /* Custom checkbox */
+        .custom-checkbox:checked {
+            background-color: #C19A6B;
+            border-color: #C19A6B;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <!-- HEADER & NAVIGATION -->
+    <header class="bg-white/80 backdrop-blur-lg sticky top-0 z-40 shadow-sm">
+        <div class="bg-gray-800 text-white text-xs text-center py-2">
+            <p>Free Shipping on Orders Over ₹5,000 | <span class="font-semibold">Limited Time Offer</span></p>
+        </div>
+        <div class="container mx-auto px-4">
+            <nav class="flex justify-between items-center py-4">
+                <a href="#" onclick="navigateTo('home')" class="text-4xl font-serif text-[#3A3A3A]">Furni.</a>
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#" onclick="navigateTo('home')" class="nav-link">Home</a>
+                    <a href="#" onclick="navigateTo('shop')" class="nav-link">Shop</a>
+                    <div class="group dropdown">
+                        <a href="#" onclick="navigateTo('shop')" class="nav-link cursor-pointer">Categories <i class="fas fa-chevron-down text-xs ml-1"></i></a>
+                        <div class="dropdown-menu">
+                            <a href="#" onclick="navigateTo('shop', { category: 'Sofas' })" class="dropdown-item">Sofas</a>
+                            <a href="#" onclick="navigateTo('shop', { category: 'Chairs' })" class="dropdown-item">Chairs</a>
+                            <a href="#" onclick="navigateTo('shop', { category: 'Tables' })" class="dropdown-item">Tables</a>
+                            <a href="#" onclick="navigateTo('shop', { category: 'Beds' })" class="dropdown-item">Beds</a>
+                        </div>
+                    </div>
+                    <a href="#" class="nav-link">About Us</a>
+                </div>
+                <div class="flex items-center space-x-5">
+                    <button class="text-gray-700 hover:text-[#C19A6B] transition-transform duration-300 hover:scale-110"><i class="fas fa-search fa-lg"></i></button>
+                    <button onclick="navigateTo('cart')" class="relative text-gray-700 hover:text-[#C19A6B] transition-transform duration-300 hover:scale-110">
+                        <i class="fas fa-shopping-bag fa-lg"></i>
+                        <span id="cart-count" class="absolute -top-2 -right-3 bg-[#C19A6B] text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">0</span>
+                    </button>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="container mx-auto px-4 py-8">
+        <div id="home" class="page">
+            <section class="relative h-[600px] flex items-center rounded-lg overflow-hidden mb-20">
+                 <img src="https://images.unsplash.com/photo-1555041469-a586c61ea9bc?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" class="absolute inset-0 w-full h-full object-cover" alt="Modern green sofa in a stylish living room">
+                 <div class="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent"></div>
+                 <div class="relative z-10 p-12 md:w-1/2">
+                    <h1 class="text-white text-5xl md:text-7xl font-serif mb-4 leading-tight">Design That Inspires Living.</h1>
+                    <p class="text-white/80 text-lg mb-8">Discover curated collections of furniture that blend timeless style with modern comfort.</p>
+                    <button onclick="navigateTo('shop')" class="btn btn-hero text-lg">Explore The Collection</button>
+                </div>
+            </section>
+            
+            <section id="featured-products" class="mb-20">
+                <h2 class="text-4xl font-serif text-center mb-12">Featured Products</h2>
+                <div id="featured-products-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-16"></div>
+            </section>
+        </div>
+
+        <!-- NEW SHOP PAGE -->
+        <div id="shop" class="page">
+            <div class="mb-8">
+                <h1 class="text-5xl font-serif">Shop</h1>
+                <p class="text-gray-500">Browse our curated collection of modern furniture.</p>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                <!-- Sidebar -->
+                <aside class="lg:col-span-1 bg-gray-50 p-6 rounded-lg self-start sticky top-28">
+                    <h3 class="text-xl font-semibold mb-6">Filters</h3>
+                    <!-- Category Filter -->
+                    <div class="mb-6">
+                        <h4 class="font-semibold mb-3">Category</h4>
+                        <div id="category-filters" class="space-y-2"></div>
+                    </div>
+                    <!-- Room Filter -->
+                    <div class="mb-6">
+                        <h4 class="font-semibold mb-3">Room</h4>
+                        <div id="room-filters" class="space-y-2"></div>
+                    </div>
+                    <!-- Price Filter -->
+                    <div>
+                        <h4 class="font-semibold mb-3">Price Range</h4>
+                        <input type="range" id="price-filter" class="w-full" oninput="updatePriceLabel(this.value)" onchange="applyFiltersAndSort()">
+                        <div class="flex justify-between text-sm text-gray-600 mt-2">
+                            <span>₹1,000</span>
+                            <span id="price-label">₹40,000</span>
+                        </div>
+                    </div>
+                </aside>
+                <!-- Main Content -->
+                <main class="lg:col-span-3">
+                    <div class="flex justify-between items-center mb-6">
+                        <p id="product-count" class="text-gray-600"></p>
+                        <div>
+                            <select id="sort-options" onchange="applyFiltersAndSort()" class="border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-[#C19A6B] focus:border-transparent transition">
+                                <option value="latest">Sort by Latest</option>
+                                <option value="price-asc">Price: Low to High</option>
+                                <option value="price-desc">Price: High to Low</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="shop-products-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-12"></div>
+                </main>
+            </div>
+        </div>
+
+        <div id="product-detail" class="page"></div>
+        <div id="cart" class="page"></div>
+        <div id="checkout" class="page"></div>
+    </main>
+
+    <footer class="bg-gray-800 text-white mt-20">
+        <div class="container mx-auto px-4 py-12">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+                <div>
+                    <h4 class="font-semibold text-lg mb-4">Shop</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="#" onclick="navigateTo('shop', { category: 'All' })" class="hover:text-white">All Products</a></li>
+                        <li><a href="#" onclick="navigateTo('shop', { room: 'Living Room' })" class="hover:text-white">Living Room</a></li>
+                        <li><a href="#" onclick="navigateTo('shop', { room: 'Bedroom' })" class="hover:text-white">Bedroom</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-lg mb-4">About</h4>
+                     <ul class="space-y-2 text-gray-400">
+                        <li><a href="#" class="hover:text-white">Our Story</a></li>
+                        <li><a href="#" class="hover:text-white">Careers</a></li>
+                        <li><a href="#" class="hover:text-white">Press</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-lg mb-4">Support</h4>
+                     <ul class="space-y-2 text-gray-400">
+                        <li><a href="#" class="hover:text-white">Contact Us</a></li>
+                        <li><a href="#" class="hover:text-white">FAQs</a></li>
+                        <li><a href="#" class="hover:text-white">Shipping & Returns</a></li>
+                    </ul>
+                </div>
+                 <div>
+                    <h4 class="font-semibold text-lg mb-4">Join Our Newsletter</h4>
+                    <p class="text-gray-400 mb-4">Get exclusive access to new collections and sales.</p>
+                    <div class="flex">
+                        <input type="email" placeholder="Your email" class="bg-gray-700 text-white p-2 rounded-l-md focus:outline-none w-full">
+                        <button class="bg-[#C19A6B] px-4 rounded-r-md text-white"><i class="fas fa-arrow-right"></i></button>
+                    </div>
+                </div>
+            </div>
+            <div class="text-center text-gray-500 border-t border-gray-700 pt-8">&copy; 2025 Furni. All Rights Reserved.</div>
+        </div>
+    </footer>
+    
+    <div id="custom-modal" class="modal-overlay opacity-0 pointer-events-none">
+        <div class="modal-content opacity-0">
+            <div id="modal-icon" class="text-5xl mb-4"></div>
+            <h3 id="modal-title" class="text-2xl font-serif mb-2"></h3>
+            <p id="modal-message" class="text-gray-600 mb-6"></p>
+            <button id="modal-close" class="btn btn-primary">Close</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        
+        const products = [
+            { id: 1, name: 'The Minimalist Chair', price: 8990, originalPrice: 12000, images: ['https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?q=80&w=2787&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', 'https://images.unsplash.com/photo-1592078615290-033ee584e267?q=80&w=2864&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', 'https://images.unsplash.com/photo-1503602642458-232111445657?q=80&w=2787&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'], category: 'Chairs', room: 'Office', description: 'A perfect blend of form and function. This chair features a sculpted ash wood frame and a comfortable, upholstered seat, ideal for any modern dining room or office.', details: 'Frame: Solid Ash Wood, Seat: High-density foam with fabric upholstery, Finish: Natural oil.', dimensions: 'Height: 80cm, Width: 45cm, Depth: 50cm' },
+            { id: 2, name: 'Velvet Green Sofa', price: 24500, originalPrice: 32000, images: ['https://images.unsplash.com/photo-1555041469-a586c61ea9bc?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'], category: 'Sofas', room: 'Living Room', description: 'A statement piece for any living room. Upholstered in rich, green velvet with elegant brass legs, this sofa offers both supreme comfort and undeniable style.', details: 'Upholstery: Green Velvet, Legs: Brass', dimensions: 'Width: 200cm, Depth: 90cm, Height: 75cm' },
+            { id: 3, name: 'Oak & Rattan Sideboard', price: 18200, originalPrice: 25000, images: ['https://images.unsplash.com/photo-1616627781431-23b78698b478?q=80&w=2806&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'], category: 'Storage', room: 'Living Room', description: 'Bring natural textures into your home with this beautiful sideboard. Crafted from solid oak with woven rattan doors, it provides ample storage with a light, airy feel.', details: 'Material: Solid Oak, Natural Rattan', dimensions: 'Width: 160cm, Depth: 45cm, Height: 80cm' },
+            { id: 4, name: 'Marble Coffee Table', price: 15000, originalPrice: 20000, images: ['https://images.unsplash.com/photo-1611223913844-de8a42848145?q=80&w=2787&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'], category: 'Tables', room: 'Living Room', description: 'An elegant centerpiece for your living space, featuring a polished Italian marble top and a sleek metal base.', details: 'Top: Italian Carrara Marble, Base: Powder-coated steel', dimensions: 'Diameter: 90cm, Height: 40cm' },
+            { id: 5, name: 'Modern Platform Bed', price: 28000, originalPrice: 35000, images: ['https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'], category: 'Beds', room: 'Bedroom', description: 'Sleek, low-profile design for a modern bedroom. Crafted from solid walnut with a natural finish.', details: 'Material: Solid Walnut, integrated headboard', dimensions: 'Fits Queen Mattress (160cm x 200cm)' },
+            { id: 6, name: 'Arc Floor Lamp', price: 9500, originalPrice: 13000, images: ['https://images.unsplash.com/photo-1542728558-b96023161111?q=80&w=2848&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'], category: 'Lighting', room: 'Living Room', description: 'Illuminate your space with this iconic design. Features a heavy marble base for stability and a large, arcing arm.', details: 'Base: Marble, Shade: Metal', dimensions: 'Height: 210cm, Reach: 180cm' },
+            { id: 7, name: 'Bouclé Accent Chair', price: 12500, originalPrice: 16000, images: ['https://images.unsplash.com/photo-1617103994522-8501304214a6?q=80&w=2787&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'], category: 'Chairs', room: 'Bedroom', description: 'Cozy and chic, perfect for a reading nook. Upholstered in soft and durable teddy bouclé fabric.', details: 'Upholstery: Teddy Bouclé Fabric, Frame: Pine Wood', dimensions: 'Width: 75cm, Depth: 80cm, Height: 70cm' },
+            { id: 8, name: 'Executive Desk', price: 32000, originalPrice: 40000, images: ['https://images.unsplash.com/photo-1611241418385-a4a3b750a2a3?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'], category: 'Tables', room: 'Office', description: 'A commanding presence for any home office, with ample workspace and a minimalist aesthetic.', details: 'Material: Oak Veneer, Steel Legs, 2 drawers', dimensions: '160cm x 80cm, Height: 75cm' },
+            { id: 9, name: 'Linen Upholstered Sofa', price: 29900, originalPrice: 38000, images: ['https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'], category: 'Sofas', room: 'Living Room', description: 'Casual elegance with comfortable, removable linen covers for easy cleaning. Perfect for a family home.', details: 'Upholstery: Natural Linen Blend, Cushions: Feather and foam', dimensions: 'Width: 220cm, Depth: 95cm, Height: 80cm' },
+        ];
+        let cart = JSON.parse(localStorage.getItem('furniCart')) || [];
+        let active3DScene = null;
+
+        window.navigateTo = function(pageId, params = null) {
+            if (active3DScene) { active3DScene.dispose(); active3DScene = null; }
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+            const targetPage = document.getElementById(pageId);
+            if(targetPage) {
+                targetPage.classList.add('active');
+            } else {
+                document.getElementById('home').classList.add('active');
+            }
+            window.scrollTo(0, 0);
+
+            if (pageId === 'shop') renderShopPage(params);
+            if (pageId === 'product-detail' && params?.productId) renderProductDetail(params.productId);
+            if (pageId === 'cart') renderCart();
+            if (pageId === 'checkout') renderCheckout();
+        }
+
+        function renderShopPage(params) {
+            const categories = [...new Set(products.map(p => p.category))];
+            const rooms = [...new Set(products.map(p => p.room))];
+            const maxPrice = Math.max(...products.map(p => p.price));
+            
+            const categoryFiltersContainer = document.getElementById('category-filters');
+            categoryFiltersContainer.innerHTML = categories.map(cat => `
+                <label class="flex items-center space-x-3">
+                    <input type="checkbox" class="custom-checkbox h-5 w-5 rounded text-[#C19A6B] focus:ring-[#C19A6B]" value="${cat}" onchange="applyFiltersAndSort()">
+                    <span>${cat}</span>
+                </label>
+            `).join('');
+
+            const roomFiltersContainer = document.getElementById('room-filters');
+            roomFiltersContainer.innerHTML = rooms.map(room => `
+                <label class="flex items-center space-x-3">
+                    <input type="checkbox" class="custom-checkbox h-5 w-5 rounded text-[#C19A6B] focus:ring-[#C19A6B]" value="${room}" onchange="applyFiltersAndSort()">
+                    <span>${room}</span>
+                </label>
+            `).join('');
+
+            const priceFilter = document.getElementById('price-filter');
+            priceFilter.max = maxPrice;
+            priceFilter.value = maxPrice;
+            updatePriceLabel(maxPrice);
+
+            // Apply initial filters from params if they exist
+            if (params?.category) {
+                const checkbox = categoryFiltersContainer.querySelector(`input[value="${params.category}"]`);
+                if (checkbox) checkbox.checked = true;
+            }
+            if (params?.room) {
+                const checkbox = roomFiltersContainer.querySelector(`input[value="${params.room}"]`);
+                if (checkbox) checkbox.checked = true;
+            }
+
+            applyFiltersAndSort();
+        }
+
+        window.applyFiltersAndSort = function() {
+            // Get selected categories
+            const selectedCategories = [...document.querySelectorAll('#category-filters input:checked')].map(el => el.value);
+            // Get selected rooms
+            const selectedRooms = [...document.querySelectorAll('#room-filters input:checked')].map(el => el.value);
+            // Get price
+            const maxPrice = document.getElementById('price-filter').value;
+            // Get sort option
+            const sortBy = document.getElementById('sort-options').value;
+
+            let filteredProducts = [...products];
+
+            // Apply filters
+            if (selectedCategories.length > 0) {
+                filteredProducts = filteredProducts.filter(p => selectedCategories.includes(p.category));
+            }
+            if (selectedRooms.length > 0) {
+                filteredProducts = filteredProducts.filter(p => selectedRooms.includes(p.room));
+            }
+            filteredProducts = filteredProducts.filter(p => p.price <= maxPrice);
+
+            // Apply sorting
+            if (sortBy === 'price-asc') {
+                filteredProducts.sort((a, b) => a.price - b.price);
+            } else if (sortBy === 'price-desc') {
+                filteredProducts.sort((a, b) => b.price - a.price);
+            } else { // 'latest'
+                filteredProducts.sort((a, b) => b.id - a.id);
+            }
+            
+            renderProductGrid(filteredProducts, 'shop-products-grid');
+            document.getElementById('product-count').innerText = `${filteredProducts.length} products found`;
+        }
+
+        function renderProductGrid(productsToRender, gridId) {
+            const grid = document.getElementById(gridId);
+            if (!grid) return;
+            if (productsToRender.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center py-12"><p class="text-gray-500">No products match your criteria.</p></div>`;
+                return;
+            }
+            grid.innerHTML = productsToRender.map(product => `
+                <div class="product-card group cursor-pointer" onclick="navigateTo('product-detail', { productId: ${product.id} })">
+                    <div class="relative overflow-hidden rounded-lg shadow-sm">
+                        <img src="${product.images[0]}" alt="${product.name}" class="w-full h-80 object-cover group-hover:scale-105 transition-transform duration-500">
+                        <div class="absolute bottom-4 left-1/2 -translate-x-1/2 w-full px-4 flex flex-col sm:flex-row justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                           <button onclick="event.stopPropagation(); addToCart(${product.id})" class="flex-1 bg-white/80 backdrop-blur-sm text-gray-800 text-sm font-semibold py-2 px-4 rounded-full hover:bg-white shadow">Add to Cart</button>
+                           <button onclick="event.stopPropagation(); buyNow(${product.id})" class="flex-1 bg-[#C19A6B] text-white text-sm font-semibold py-2 px-4 rounded-full hover:bg-[#3A3A3A] shadow">Buy Now</button>
+                        </div>
+                    </div>
+                    <div class="pt-4 text-center">
+                        <h3 class="font-semibold text-lg">${product.name}</h3>
+                        <p class="text-gray-500">${product.category}</p>
+                        <p class="font-bold mt-2">₹${product.price.toLocaleString('en-IN')}</p>
+                    </div>
+                </div>
+            `).join('');
+            observeVisibleElements();
+        }
+
+        window.updatePriceLabel = function(value) {
+            document.getElementById('price-label').innerText = `₹${parseInt(value).toLocaleString('en-IN')}`;
+        }
+        
+        function renderProductDetail(productId) {
+            const product = products.find(p => p.id === productId);
+            const container = document.getElementById('product-detail');
+            container.innerHTML = `
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+                    <div>
+                        <div class="sticky top-28">
+                            <div id="product-3d-view" class="mb-4"></div>
+                            <div class="grid grid-cols-3 gap-2">
+                                ${product.images.map(img => `<img src="${img}" class="w-full h-24 object-cover rounded-md cursor-pointer hover:opacity-75 transition">`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <a onclick="navigateTo('shop')" class="nav-link inline-block mb-4 text-sm">&larr; Back to shop</a>
+                        <h1 class="text-5xl font-serif mb-4">${product.name}</h1>
+                        <div class="flex items-center mb-4">
+                            <div class="flex text-yellow-400">${[...Array(5)].map((_, i) => `<i class="fas fa-star ${i < 4 ? '' : 'text-gray-300'}"></i>`).join('')}</div>
+                            <a href="#reviews" class="ml-2 text-sm text-gray-500 hover:underline">(12 Reviews)</a>
+                        </div>
+                        <p class="text-gray-600 text-lg mb-6">${product.description}</p>
+                        <div class="mb-6">
+                            <span class="text-4xl font-bold text-gray-900">₹${product.price.toLocaleString('en-IN')}</span>
+                            <span class="text-xl text-gray-400 line-through ml-4">₹${product.originalPrice.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div class="mb-8">
+                            <h4 class="font-semibold mb-3">Choose Color:</h4>
+                            <div id="color-options" class="flex space-x-3"></div>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            <button onclick="addToCart(${product.id})" class="btn btn-primary flex-grow text-lg"><i class="fas fa-shopping-bag mr-2"></i> Add to Bag</button>
+                            <button onclick="buyNow(${product.id})" class="btn btn-hero flex-grow text-lg">Buy Now</button>
+                        </div>
+                        <div class="mt-10 border-t border-gray-200">
+                            <div class="accordion-item">
+                                <div class="accordion-header"><h4 class="font-semibold">Product Details</h4><i class="fas fa-chevron-down transition-transform"></i></div>
+                                <div class="accordion-content"><p class="text-gray-600">${product.details}</p></div>
+                            </div>
+                            <div class="accordion-item">
+                                <div class="accordion-header"><h4 class="font-semibold">Dimensions</h4><i class="fas fa-chevron-down transition-transform"></i></div>
+                                <div class="accordion-content"><p class="text-gray-600">${product.dimensions}</p></div>
+                            </div>
+                            <div class="accordion-item">
+                                <div class="accordion-header"><h4 class="font-semibold">Shipping & Returns</h4><i class="fas fa-chevron-down transition-transform"></i></div>
+                                <div class="accordion-content"><p class="text-gray-600">Free shipping on all orders. Easy 30-day returns. Read our full policy for more details.</p></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <section id="reviews" class="mt-20 pt-10 border-t">
+                    <h2 class="text-4xl font-serif mb-8">What Our Customers Say</h2>
+                    <div class="space-y-8">
+                        <div class="flex space-x-4"><img src="https://i.pravatar.cc/150?u=a042581f4e29026704d" class="w-12 h-12 rounded-full" alt="avatar"><div><div class="flex items-center mb-1"><h5 class="font-semibold">Sarah L.</h5><div class="flex text-yellow-400 ml-3">${[...Array(5)].map(() => `<i class="fas fa-star text-xs"></i>`).join('')}</div></div><p class="text-gray-600">Absolutely stunning chair! It's even more beautiful in person. The quality is top-notch and it was delivered so quickly. Highly recommend!</p></div></div>
+                        <div class="flex space-x-4"><img src="https://i.pravatar.cc/150?u=a042581f4e29026704e" class="w-12 h-12 rounded-full" alt="avatar"><div><div class="flex items-center mb-1"><h5 class="font-semibold">Rajesh K.</h5><div class="flex text-yellow-400 ml-3">${[...Array(5)].map((_, i) => `<i class="fas fa-star text-xs ${i < 4 ? '' : 'text-gray-300'}"></i>`).join('')}</div></div><p class="text-gray-600">Very good product. Solid wood and feels very sturdy. The color was slightly different than the picture but still looks great in my study.</p></div></div>
+                    </div>
+                </section>
+                <section class="mt-20 pt-10 border-t">
+                     <h2 class="text-4xl font-serif text-center mb-12">You Might Also Like</h2>
+                     <div id="related-products-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10"></div>
+                </section>
+            `;
+            init3DViewer(product);
+            setupAccordion();
+            renderRelatedProducts(product.id);
+        }
+
+        function renderRelatedProducts(currentProductId) {
+             const grid = document.getElementById('related-products-grid');
+             const related = products.filter(p => p.id !== currentProductId).slice(0, 3);
+             renderProductGrid(related, 'related-products-grid');
+        }
+        
+        function renderCart() {
+            const container = document.getElementById('cart');
+            if (!container) return;
+            let subtotal = cart.reduce((sum, item) => sum + products.find(p => p.id === item.id).price * item.quantity, 0);
+            const tax = subtotal * 0.18;
+            const total = subtotal + tax;
+
+            if (cart.length === 0) {
+                container.innerHTML = `<div class="text-center py-20"><h1 class="text-3xl font-serif mb-4">Your Cart is Empty</h1><p class="text-gray-500 mb-8">Looks like you haven't added anything to your cart yet.</p><button onclick="navigateTo('shop')" class="btn btn-primary">Go to Shop</button></div>`;
+                return;
+            }
+
+            container.innerHTML = `
+                <h1 class="text-4xl font-serif mb-8">Shopping Cart</h1>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2 space-y-4" id="cart-items-container">
+                        ${cart.map(item => {
+                            const product = products.find(p => p.id === item.id);
+                            return `
+                            <div class="bg-white p-4 rounded-lg border border-gray-200 flex items-center justify-between">
+                                <div class="flex items-center space-x-4">
+                                    <img src="${product.images[0]}" alt="${product.name}" class="w-24 h-24 object-cover rounded-md">
+                                    <div>
+                                        <h3 class="font-semibold">${product.name}</h3>
+                                        <p class="text-gray-500">₹${product.price.toLocaleString('en-IN')}</p>
+                                        <button onclick="removeFromCart(${product.id})" class="text-red-500 hover:underline text-sm mt-1">Remove</button>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-4">
+                                    <button onclick="updateQuantity(${product.id}, -1)" class="border rounded-full w-8 h-8 hover:bg-gray-100">-</button>
+                                    <span>${item.quantity}</span>
+                                    <button onclick="updateQuantity(${product.id}, 1)" class="border rounded-full w-8 h-8 hover:bg-gray-100">+</button>
+                                </div>
+                                <div class="font-semibold text-lg">₹${(product.price * item.quantity).toLocaleString('en-IN')}</div>
+                            </div>
+                            `;
+                        }).join('')}
+                    </div>
+                    <div class="lg:col-span-1">
+                         <div class="bg-white p-6 rounded-lg border border-gray-200 sticky top-24">
+                            <h2 class="text-2xl font-serif mb-4">Summary</h2>
+                            <div class="space-y-2 text-gray-600">
+                                <div class="flex justify-between"><span>Subtotal</span><span>₹${subtotal.toLocaleString('en-IN')}</span></div>
+                                <div class="flex justify-between"><span>Taxes (18%)</span><span>₹${tax.toLocaleString('en-IN')}</span></div>
+                            </div>
+                            <div class="flex justify-between font-bold text-xl border-t pt-4 mt-4">
+                                <span>Total</span><span>₹${total.toLocaleString('en-IN')}</span>
+                            </div>
+                            <button onclick="navigateTo('checkout')" class="btn btn-primary w-full mt-6">Proceed to Checkout</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderCheckout() {
+            const container = document.getElementById('checkout');
+            if (!container) return;
+            let subtotal = cart.reduce((sum, item) => sum + products.find(p => p.id === item.id).price * item.quantity, 0);
+            const tax = subtotal * 0.18;
+            const total = subtotal + tax;
+
+            container.innerHTML = `
+                <h1 class="text-4xl font-serif mb-8">Finalize Your Order</h1>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2 bg-white p-8 rounded-lg border border-gray-200">
+                        <h2 class="text-2xl font-serif mb-6">Shipping Information</h2>
+                        <form class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4"><input type="text" placeholder="First Name" class="p-3 border border-gray-300 rounded-md w-full focus:ring-2 focus:ring-[#C19A6B] focus:border-transparent transition"><input type="text" placeholder="Last Name" class="p-3 border border-gray-300 rounded-md w-full focus:ring-2 focus:ring-[#C19A6B] focus:border-transparent transition"></div>
+                            <input type="text" placeholder="Address" class="p-3 border border-gray-300 rounded-md w-full focus:ring-2 focus:ring-[#C19A6B] focus:border-transparent transition">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4"><input type="text" placeholder="City" class="p-3 border border-gray-300 rounded-md w-full focus:ring-2 focus:ring-[#C19A6B] focus:border-transparent transition"><input type="text" placeholder="State" class="p-3 border border-gray-300 rounded-md w-full focus:ring-2 focus:ring-[#C19A6B] focus:border-transparent transition"><input type="text" placeholder="PIN Code" class="p-3 border border-gray-300 rounded-md w-full focus:ring-2 focus:ring-[#C19A6B] focus:border-transparent transition"></div>
+                            <input type="email" placeholder="Email Address" class="p-3 border border-gray-300 rounded-md w-full focus:ring-2 focus:ring-[#C19A6B] focus:border-transparent transition">
+                        </form>
+                    </div>
+                    <div class="bg-white p-8 rounded-lg border border-gray-200">
+                        <h2 class="text-2xl font-serif mb-6">Order Summary</h2>
+                        <div class="space-y-2">
+                            ${cart.map(item => {
+                                const product = products.find(p => p.id === item.id);
+                                return `<div class="flex justify-between text-sm"><span>${product.name.substring(0,20)}... x ${item.quantity}</span> <span>₹${(product.price * item.quantity).toLocaleString('en-IN')}</span></div>`
+                            }).join('')}
+                        </div>
+                        <div class="border-t my-4"></div>
+                        <div class="flex justify-between mb-2 text-gray-600"><span>Subtotal</span><span>₹${subtotal.toLocaleString('en-IN')}</span></div>
+                        <div class="flex justify-between mb-4 text-gray-600"><span>Taxes</span><span>₹${tax.toLocaleString('en-IN')}</span></div>
+                        <div class="flex justify-between font-bold text-xl border-t pt-4"><span>Total</span><span>₹${total.toLocaleString('en-IN')}</span></div>
+                        <button onclick="placeOrder()" class="btn btn-primary w-full mt-6">Place Order</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function setupAccordion() {
+            document.querySelectorAll('.accordion-item').forEach(item => {
+                const header = item.querySelector('.accordion-header');
+                header.addEventListener('click', () => {
+                    const content = item.querySelector('.accordion-content');
+                    const icon = header.querySelector('i');
+                    document.querySelectorAll('.accordion-item').forEach(otherItem => {
+                        if (otherItem !== item) {
+                            otherItem.querySelector('.accordion-content').classList.remove('open');
+                            otherItem.querySelector('i').classList.remove('rotate-180');
+                        }
+                    });
+                    content.classList.toggle('open');
+                    icon.classList.toggle('rotate-180');
+                });
+            });
+        }
+        
+        function init3DViewer(product) {
+            const container = document.getElementById('product-3d-view');
+            if (!container) return;
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf0f0f0);
+            const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.z = 5;
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.innerHTML = '';
+            container.appendChild(renderer.domElement);
+            const controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(5, 10, 7.5);
+            scene.add(directionalLight);
+            const material = new THREE.MeshStandardMaterial({ color: 0xC19A6B, roughness: 0.5, metalness: 0.1 });
+            const chair = new THREE.Group();
+            const seat = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.2, 1.5), material);
+            seat.position.y = 0.5;
+            chair.add(seat);
+            const back = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2, 0.2), material);
+            back.position.y = 1.6;
+            back.position.z = -0.65;
+            chair.add(back);
+            [{x:0.6, z:0.6}, {x:-0.6, z:0.6}, {x:0.6, z:-0.6}, {x:-0.6, z:-0.6}].forEach(pos => {
+                const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.5, 8), material);
+                leg.position.set(pos.x, -0.35, pos.z);
+                chair.add(leg);
+            });
+            scene.add(chair);
+            chair.position.y = -0.5;
+            const colors = { 'Burnt Sienna': '#C19A6B', 'Forest Green': '#228B22', 'Charcoal Gray': '#36454F', 'Navy Blue': '#000080' };
+            const colorOptionsContainer = document.getElementById('color-options');
+            colorOptionsContainer.innerHTML = Object.entries(colors).map(([name, hex], index) => `<div class="color-swatch ${index === 0 ? 'active' : ''}" style="background-color: ${hex};" data-color="${hex}" title="${name}"></div>`).join('');
+            colorOptionsContainer.addEventListener('click', (e) => {
+                if(e.target.classList.contains('color-swatch')) {
+                    material.color.set(e.target.dataset.color);
+                    document.querySelectorAll('.color-swatch').forEach(el => el.classList.remove('active'));
+                    e.target.classList.add('active');
+                }
+            });
+            function animate() { if (!active3DScene) return; requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
+            function onWindowResize() { camera.aspect = container.clientWidth / container.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(container.clientWidth, container.clientHeight); }
+            window.addEventListener('resize', onWindowResize, false);
+            active3DScene = { dispose: () => { window.removeEventListener('resize', onWindowResize); renderer.dispose(); container.innerHTML = ''; active3DScene = null; } };
+            animate();
+        }
+
+        function observeVisibleElements() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('is-visible');
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.1 });
+            document.querySelectorAll('.product-card').forEach(card => observer.observe(card));
+        }
+
+        window.buyNow = function(productId) { addToCart(productId, false); navigateTo('checkout'); }
+        window.addToCart = function(productId, showModalFlag = true) {
+            const existingItem = cart.find(item => item.id === productId);
+            if (existingItem) existingItem.quantity++;
+            else cart.push({ id: productId, quantity: 1 });
+            updateCartState();
+            if (showModalFlag) showModal('<i class="fas fa-check-circle text-green-500"></i>', 'Added to Bag!', `${products.find(p => p.id === productId).name} is now in your shopping bag.`);
+        }
+        window.removeFromCart = function(productId) {
+            cart = cart.filter(item => item.id !== productId);
+            updateCartState();
+            renderCart();
+        }
+        window.updateQuantity = function(productId, change) {
+            const item = cart.find(item => item.id === productId);
+            if (item) {
+                item.quantity += change;
+                if (item.quantity <= 0) removeFromCart(productId);
+                else { updateCartState(); renderCart(); }
+            }
+        }
+        window.placeOrder = function() {
+            if (cart.length === 0) {
+                showModal('<i class="fas fa-exclamation-circle text-yellow-500"></i>', 'Empty Cart', 'Please add items to your cart before placing an order.');
+                return;
+            }
+            showModal('<i class="fas fa-paper-plane text-blue-500"></i>', 'Order Placed!', 'Thank you for your purchase. We will process your order shortly.');
+            cart = [];
+            updateCartState();
+            setTimeout(() => navigateTo('home'), 2000);
+        }
+        function updateCartState() {
+             document.getElementById('cart-count').innerText = cart.reduce((sum, item) => sum + item.quantity, 0);
+             localStorage.setItem('furniCart', JSON.stringify(cart));
+        }
+        const modal = document.getElementById('custom-modal');
+        const modalContent = modal.querySelector('.modal-content');
+        window.showModal = function(icon, title, message) {
+            document.getElementById('modal-icon').innerHTML = icon;
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-message').innerText = message;
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modalContent.classList.remove('opacity-0', 'scale-95');
+        }
+        document.getElementById('modal-close').addEventListener('click', () => {
+            modal.classList.add('opacity-0');
+            modalContent.classList.add('scale-95');
+            setTimeout(() => { modal.classList.add('pointer-events-none'); modalContent.classList.add('opacity-0'); }, 300);
+        });
+
+        window.onload = () => {
+            navigateTo('home');
+            renderProductGrid(products.slice(0,3), 'featured-products-grid');
+            updateCartState();
+        };
+    </script>
+</body>
+</html>
